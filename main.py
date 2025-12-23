@@ -207,7 +207,7 @@ class ObjectDetectionApp:
             self.detection_model = YOLO('yolov8n.pt')  # nano model for speed
             
             # Load ResNet50 for classification
-            self.classification_model = models.resnet50(pretrained=True)
+            self.classification_model = models.resnet50(weights=models.ResNet50_Weights.IMAGENET1K_V1)
             self.classification_model.to(self.device)
             self.classification_model.eval()
             
@@ -395,11 +395,14 @@ class ObjectDetectionApp:
                 
             # Return class label
             class_idx = top_class.item()
-            if self.class_labels is not None and class_idx < len(self.class_labels):
+            # Verify class index is valid (ResNet50 outputs 0-999 for ImageNet)
+            if self.class_labels is not None and 0 <= class_idx < len(self.class_labels):
                 return self.class_labels[class_idx]
-            else:
-                # Return class index if labels not available
+            elif 0 <= class_idx < 1000:
+                # Valid ImageNet class but label not loaded
                 return f"Class_{class_idx}"
+            else:
+                return "Unknown"
         except Exception as e:
             return "Unknown"
     
