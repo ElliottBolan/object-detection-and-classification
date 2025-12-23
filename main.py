@@ -230,16 +230,10 @@ class ObjectDetectionApp:
     
     def load_imagenet_labels(self):
         """Load ImageNet class labels"""
-        # Simplified list of common ImageNet classes
-        self.class_labels = [
-            "tench", "goldfish", "great white shark", "tiger shark", "hammerhead",
-            "electric ray", "stingray", "cock", "hen", "ostrich", "brambling",
-            "goldfinch", "house finch", "junco", "indigo bunting", "robin",
-            "bulbul", "jay", "magpie", "chickadee", "water ouzel", "kite",
-            "bald eagle", "vulture", "great grey owl", "European fire salamander",
-            "common newt", "eft", "spotted salamander", "axolotl", "bullfrog"
-        ]
-        # In a real implementation, load all 1000 ImageNet classes
+        # Initialize with None - will use class index if labels not available
+        # In a production environment, download the full 1000-class ImageNet labels
+        # from: https://raw.githubusercontent.com/pytorch/hub/master/imagenet_classes.txt
+        self.class_labels = None
         
     def select_camera(self):
         """Select camera as video source"""
@@ -365,7 +359,8 @@ class ObjectDetectionApp:
                         if roi.size > 0:
                             class_label = self.classify_roi(roi)
                             label = f"{label} ({class_label})"
-                    except:
+                    except Exception as e:
+                        # Classification failed, continue with detection only
                         pass
                 
                 # Draw bounding box
@@ -398,12 +393,14 @@ class ObjectDetectionApp:
                 probabilities = torch.nn.functional.softmax(output[0], dim=0)
                 top_prob, top_class = torch.topk(probabilities, 1)
                 
-            # Return class label (simplified)
-            if top_class.item() < len(self.class_labels):
-                return self.class_labels[top_class.item()]
+            # Return class label
+            class_idx = top_class.item()
+            if self.class_labels is not None and class_idx < len(self.class_labels):
+                return self.class_labels[class_idx]
             else:
-                return f"Class {top_class.item()}"
-        except:
+                # Return class index if labels not available
+                return f"Class_{class_idx}"
+        except Exception as e:
             return "Unknown"
     
     def get_color(self, cls):
